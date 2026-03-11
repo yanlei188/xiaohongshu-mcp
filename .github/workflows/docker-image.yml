@@ -1,63 +1,37 @@
-name: Docker Release  # 工作流名称
+name: Docker Release
 
-# 触发条件配置
 on:
-  # 1. 手动触发：可以在 GitHub Actions 页面手动运行
-  workflow_dispatch:
-    inputs:
-      reason:
-        description: '构建原因'
-        required: false
-        default: '手动触发构建'
-  
-  # 2. 代码推送到 main 分支时触发
   push:
-    branches: [ "main" ]
-    # 创建版本标签时触发（例如：v1.0.0）
-    tags: [ "v*" ]
-  
-  # 3. 创建针对 main 分支的 PR 时触发
+    branches: [ main ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ main ]
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # 使用最新版的 Ubuntu 运行环境
-    
+    runs-on: ubuntu-latest
     steps:
-      # 检出代码
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # 获取完整提交历史，用于生成版本号
 
-      # 生成版本号：格式为 v2024.01.01.1200-commitid
       - name: 生成版本号
         id: version
         run: |
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-8)
-          echo "VERSION=v$(date +%Y.%m.%d.%H%M)-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "VERSION=v$(date +%Y.%m.%d)-${SHORT_SHA}" >> $GITHUB_OUTPUT
 
-      # 设置 Docker Buildx（用于构建多平台镜像）
       - name: 设置 Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 登录到 Docker Hub
-      - name: 登录 Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      # 暂时注释掉登录和推送，只验证构建流程
+      # - name: 登录 Docker Hub
+      #   uses: docker/login-action@v3
+      #   with:
+      #     username: ${{ secrets.DOCKERHUB_USERNAME }}
+      #     password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 构建并推送 Docker 镜像
-      - name: 构建并推送 Docker 镜像
+      - name: 构建 Docker 镜像（不推送）
         uses: docker/build-push-action@v5
         with:
-          context: .  # 构建上下文为当前目录
-          file: ./Dockerfile  # Dockerfile 路径
-          push: true  # 构建完成后推送到仓库
-          # 镜像标签：用户名/仓库名:版本号
-          tags: yanlei188/xiaohongshu-mcp:${{ steps.version.outputs.VERSION }}
-          # 添加镜像标签（OCI 标准）
-          labels: |
-            org.opencontainerimages.revision=${{ github.sha }}
-            org.opencontainerimages.source=${{ github.repositoryUrl }}
+          context: .
+          file: ./Dockerfile
+          push: false  # 关键：只构建，不上传
+          tags: rabbit8688/xiaohongshu-mcp:${{ steps.version.outputs.VERSION }}
